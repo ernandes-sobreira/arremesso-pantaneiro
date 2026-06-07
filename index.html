@@ -787,13 +787,16 @@ function updateAnim(){
   const a=anim; if(!a)return;
   a.t++;
   if(a.tipo==="fugaIsca"){
-    // peixe nada levando a isca: a linha continua presa nele (você ainda não soltou)
+    // peixe nada levando a ISCA na boca; a linha NÃO está fisgada: fica frouxa, caindo.
     if(a.pz){
-      a.fugaVX*=1.015; a.pz.x+=a.fugaVX;
-      a.pz.y+=a.fugaVY; a.fugaVY+=0.02;
+      a.fugaVX*=1.012; a.pz.x+=a.fugaVX;
+      a.pz.y+=a.fugaVY; a.fugaVY+=0.03;
       a.pz.y=Math.min(a.pz.y, H-10);
       const isc=isca(); isc.x=a.pz.x; isc.y=a.pz.y;   // isca na boca do peixe
-      pts[0].x=vara.x; pts[0].y=vara.y;               // linha reta vara->peixe
+      pts[0].x=vara.x; pts[0].y=vara.y;
+      // linha frouxa: Verlet mole, sem esticar (a ponta segue a isca, o meio cai)
+      _seg=Math.max(10, Math.hypot(isc.x-vara.x,isc.y-vara.y)/(N-1)*1.6); // folga: linha sobra
+      passoVerlet(0.22,0.90); constrain(3);            // poucas iterações + grav alta = frouxa
     }
     if(a.t>=a.dur){ estado="fim"; resultado(false,a.sp,0,'timing'); anim=null; }
   } else if(a.tipo==="arrebentou"){
@@ -926,12 +929,13 @@ function draw(){
   drawBarcoFrente();
   // LINHA: quando há TENSÃO (água, briga, voo, vitória), é uma reta esticada da
   // ponta da vara até a isca/peixe — com uma curvatura mínima só pra não parecer rígida.
-  const linhaTensa = (estado==="agua"||estado==="mordendo"||estado==="briga"||estado==="voando"||(emAnim&&(anim.tipo==="vitoria"||anim.tipo==="fugaIsca")));
+  const linhaTensa = (estado==="agua"||estado==="mordendo"||estado==="briga"||estado==="voando"||(emAnim&&anim.tipo==="vitoria"));
   const escondeLinha = emAnim && anim.tipo==="vitoria" && anim.t>=anim.descida; // some quando o peixe já foi solto
-  if(emAnim && anim.tipo==="arrebentou"){
-    // ROMPEU: linha solta e mole (Verlet), cai natural
+  if(emAnim && (anim.tipo==="arrebentou"||anim.tipo==="fugaIsca")){
+    // linha solta/frouxa (Verlet): desenha seguindo todos os pontos da corda
+    const n = anim.tipo==="arrebentou" ? anim.rompido : N;
     ctx.strokeStyle='rgba(250,250,250,.92)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
-    for(let i=1;i<anim.rompido;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();
+    for(let i=1;i<n;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();
   } else if(linhaTensa && !escondeLinha){
     const ax=pts[0].x, ay=pts[0].y;            // ponta da vara
     const isc=isca();
