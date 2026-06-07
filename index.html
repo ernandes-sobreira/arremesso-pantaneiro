@@ -575,8 +575,8 @@ function update(){
       }
     }
     // tempo limite geral (perde a vez se não pegar peixe a tempo)
-    if(estado==="agua" && tempoAgua>900){ finalErro('tempo'); }
-    if(estado==="agua" && tempoAgua>660){ _tempoRestante=Math.ceil((900-tempoAgua)/60); } else { _tempoRestante=0; }
+    if(estado==="agua" && tempoAgua>1200){ finalErro('tempo'); }
+    if(estado==="agua" && tempoAgua>960){ _tempoRestante=Math.ceil((1200-tempoAgua)/60); } else { _tempoRestante=0; }
   }
   if(estado==="mira"||estado==="carregando"){
     // linha RECOLHIDA: todos os pontos colapsam na ponta da vara (isca pronta, sem cair na água)
@@ -611,7 +611,7 @@ function atrair(isc,profIsca,iscaObj){
   peixes.forEach(pz=>{
     const sp=ESPECIES[pz.esp];
     const dCam=Math.abs((pz.baseY-horizonte)/(H-horizonte)-profIsca);
-    if(dCam<0.10){
+    if(dCam<0.16){          // tolerância de camada maior (era 0.10)
       const d=Math.hypot(isc.x-pz.x,isc.y-pz.y);
       if(d<dmin){dmin=d;cand=pz;}
     }
@@ -620,16 +620,16 @@ function atrair(isc,profIsca,iscaObj){
   const sp=ESPECIES[cand.esp];
   const iscaOk=iscaCombina(iscaSel,sp);
   let estiloOk=false;
-  if(sp.mexer==="superficie") estiloOk=mexVel>2&&mexVel<10;
-  else if(sp.mexer==="parado") estiloOk=mexVel<3;
-  else if(sp.mexer==="fundo") estiloOk=mexVel<3;
-  const perto=dmin<90;
+  if(sp.mexer==="superficie") estiloOk=mexVel>1&&mexVel<14;   // faixas mais largas
+  else if(sp.mexer==="parado") estiloOk=mexVel<5;
+  else if(sp.mexer==="fundo") estiloOk=mexVel<5;
+  const perto=dmin<120;          // alcance de atração maior (era 90)
   if(iscaOk && estiloOk && perto){
-    cand.interesse+=1.5; cand.vindo=true;
-    cand.x+=(isc.x-cand.x)*0.04; cand.y+=(isc.y-cand.y)*0.04;
+    cand.interesse+=2.6; cand.vindo=true;     // sobe mais rápido (era 1.5)
+    cand.x+=(isc.x-cand.x)*0.05; cand.y+=(isc.y-cand.y)*0.05;
     if(cand.interesse<100 && tempoAgua%40===0) faseMsg("O "+sp.nome+" está vindo! Continue...");
   } else if(iscaOk && perto){
-    cand.interesse+=0.2;
+    cand.interesse+=0.8;          // isca certa, jeito errado: ainda progride devagar (era 0.2)
     if(!estiloOk && tempoAgua%45===0){
       const hint={superficie:"Toques LEVES na superfície!",parado:"Deixe quase PARADA!",fundo:"Deixe AFUNDAR e pare!"}[sp.mexer];
       faseMsg(hint);
@@ -642,7 +642,7 @@ function atrair(isc,profIsca,iscaObj){
 }
 
 function iniciarMordida(pz){
-  estado="mordendo"; mordeAlvo=pz; janelaFisga=55; // ~0.9s a 60fps
+  estado="mordendo"; mordeAlvo=pz; janelaFisga=90; // ~1,5s a 60fps (era 0,9s)
   el('dica').textContent=""; el('dica').style.background='';
   faseMsg("🐟 MORDEU! FISGUE AGORA!",true);
   const b=el('btnFisga'); b.textContent="FISGAR!"; b.classList.add('on');
