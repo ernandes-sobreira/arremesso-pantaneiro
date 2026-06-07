@@ -584,7 +584,7 @@ function update(){
   }
   // trava a escolha de isca/chumbada depois de lançar (só libera na mira)
   const pIsca=el('painelIsca'); if(pIsca){ pIsca.classList.toggle('trava', estado!=="mira"); }
-  if(estado==="briga"){ updateBriga(); const isc=isca(); if(briga&&briga.pz){isc.x=briga.pz.x;isc.y=briga.pz.y+(briga.pz._jumpOff||0);} pts[0].x=vara.x; pts[0].y=vara.y; }
+  if(estado==="briga"){ updateBriga(); const isc=isca(); if(briga&&briga.pz){const b=bocaPeixe(briga.pz);isc.x=b.x;isc.y=b.y;} pts[0].x=vara.x; pts[0].y=vara.y; }
   if(estado==="anim"){
     updateAnim();
     if(anim && anim.tipo==="vitoria" && anim.t>=anim.festa){
@@ -600,7 +600,7 @@ function update(){
       const isc=isca(); isc.x=anim.iscaX; isc.y=anim.iscaY;
       pts[0].x=vara.x; pts[0].y=vara.y;
     } else {
-      const isc=isca(); if(anim&&anim.pz){isc.x=anim.pz.x;isc.y=anim.pz.y;} pts[0].x=vara.x; pts[0].y=vara.y;
+      const isc=isca(); if(anim&&anim.pz){const b=bocaPeixe(anim.pz);isc.x=b.x;isc.y=b.y;} pts[0].x=vara.x; pts[0].y=vara.y;
     }
   }
 }
@@ -1515,6 +1515,13 @@ function drawPescador(){
   ctx.restore();
 }
 // imagem REAL do peixe (na água fica coberta pela camada de água = silhueta suave)
+function bocaPeixe(pz){
+  // a boca fica na ponta dianteira do peixe, no lado pra onde ele olha (_dir)
+  const size=pz.size||1;
+  const meiaLarg=34*size;                 // ~metade do comprimento do peixe
+  const dir=(pz._dir!==undefined)?pz._dir:1;
+  return { x: pz.x + dir*meiaLarg, y: pz.y + (pz._jumpOff||0) };
+}
 function drawPeixe(x,y,sp,fase,alpha,size,flip,ang){
   const img=FISH[sp.id];
   ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,alpha));ctx.translate(x,y);
