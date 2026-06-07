@@ -33,9 +33,12 @@ body{font-family:'Trebuchet MS','Segoe UI',sans-serif;background:var(--branco);c
 .sel-pers-row{display:flex;gap:10px;}
 .sel-pers{flex:1;padding:12px 8px;border:2px solid #cfe3ec;border-radius:12px;background:#fff;color:#356;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;transition:all .15s;}
 .sel-pers.on{border-color:#f4a93a;background:#fff4e0;color:#b26a00;transform:scale(1.03);}
+.nome-inp{width:100%;box-sizing:border-box;padding:11px 13px;border:2px solid #cfe3ec;border-radius:12px;font-family:inherit;font-size:15px;background:#fff;color:#26352f;}
+.nome-inp:focus{outline:none;border-color:#f4a93a;}
 .rk-box{background:#f3efe2;border-radius:14px;padding:12px;margin-top:12px;text-align:left;}
 .rk-box h4{margin:0 0 8px;font-size:14px;color:var(--verde);text-align:center;}
 .rk-salvar{display:flex;gap:6px;margin-bottom:10px;}
+.rk-cta{font-size:13px;font-weight:bold;color:#2f6e57;margin-bottom:6px;}
 .rk-salvar input{flex:1;min-width:0;padding:9px 11px;border-radius:10px;border:2px solid #d9cdb0;font-family:inherit;font-size:14px;background:#fff;color:#26352f;}
 .rk-salvar button{padding:9px 14px;border:none;border-radius:10px;background:var(--verde);color:#fff;font-family:inherit;font-weight:bold;font-size:13px;cursor:pointer;white-space:nowrap;}
 .rk-salvar button:disabled{opacity:.5;}
@@ -130,6 +133,8 @@ body{font-family:'Trebuchet MS','Segoe UI',sans-serif;background:var(--branco);c
         <button class="sel-pers on" data-p="homem" onclick="escolherPersonagem('homem')">👨 Pescador</button>
         <button class="sel-pers" data-p="mulher" onclick="escolherPersonagem('mulher')">👩 Pescadora</button>
       </div>
+      <div class="sel-pers-tit" style="margin-top:12px">Seu nome no ranking</div>
+      <input id="nomeJogador" class="nome-inp" maxlength="18" placeholder="Digite seu nome" autocomplete="off">
     </div>
     <button class="btn grande" onclick="iniciar()">PESCAR ▸</button>
     <button class="btn sec grande" onclick="abrirInfo()">Conhecer os peixes</button>
@@ -171,6 +176,7 @@ body{font-family:'Trebuchet MS','Segoe UI',sans-serif;background:var(--branco);c
     <div class="solte" id="solte">🌱 <b>Pesque e solte:</b> devolva o peixe à água com cuidado. O Pantanal vive disso.</div>
     <div class="rk-box" id="rkBox" style="display:none">
       <h4>🌎 Ranking Global</h4>
+      <div class="rk-cta" id="rkCta">✍️ Digite seu nome para entrar no ranking:</div>
       <div class="rk-salvar" id="rkSalvar">
         <input id="rkNome" maxlength="18" placeholder="Seu nome" autocomplete="off">
         <button id="rkBtn" onclick="salvarMeuRanking()">Salvar</button>
@@ -401,7 +407,11 @@ function montarPeixes(){
 function el(id){return document.getElementById(id);}
 function mostrar(id){document.querySelectorAll('.tela').forEach(t=>t.classList.remove('ativa'));el(id).classList.add('ativa');}
 function menu(){mostrar('inicio');}
-function iniciar(){rodada=0;pontos=0;capturas=[];mostrar('jogo');setTimeout(()=>{resize();montar();},60);}
+function iniciar(){
+  const inp=el('nomeJogador'); nomeRanking=(inp&&inp.value||'').trim().slice(0,18) || 'Anônimo';
+  rodada=0;pontos=0;capturas=[];mostrar('jogo');setTimeout(()=>{resize();montar();},60);
+}
+let nomeRanking='Anônimo';
 function abrirInfo(){
   el('modalC').innerHTML=Object.values(ESPECIES).map(s=>{
     const prof=s.camada<0.35?"superfície":s.camada<0.65?"meia-água":"fundo";
@@ -559,9 +569,9 @@ function update(){
       atrair(isc,profIsca,iscaObj);
     } else if(estado==="mordendo"){
       janelaFisga--;
-      if(janelaFisga<=0){ // perdeu a janela
+      if(janelaFisga<=0){ // perdeu a janela: o peixe foge levando a isca
         el('btnFisga').classList.remove('on');
-        recusou_timing(ESPECIES[mordeAlvo.esp]);
+        iniciarFugaIsca(ESPECIES[mordeAlvo.esp], mordeAlvo);
       }
     }
     // tempo limite geral (perde a vez se não pegar peixe a tempo)
@@ -734,6 +744,16 @@ function updateBriga(){
 
 /* ---------- ANIMAÇÕES DE DESFECHO ---------- */
 let anim=null; // {tipo, t, sp, pz, g, particulas}
+function iniciarFugaIsca(sp,pz){
+  estado="anim";
+  el('btnFisga').classList.remove('on');
+  el('faseInd').classList.remove('on','morde');
+  // o peixe mordeu mas você não fisgou: ele sai NADANDO com a isca na boca (~3s)
+  anim={tipo:"fugaIsca", t:0, dur:180, sp:sp, pz:pz};
+  pz._dir = 1;                       // foge pra direita (pro fundo aberto)
+  anim.fugaVX=1.6; anim.fugaVY=0.8;
+  el('dica').textContent="Demorou! O peixe levou a isca e fugiu.";
+}
 function iniciarAnimArrebentou(b){
   estado="anim";
   el('btnFisga').classList.remove('on');
@@ -766,7 +786,17 @@ function iniciarAnimVitoria(b,g){
 function updateAnim(){
   const a=anim; if(!a)return;
   a.t++;
-  if(a.tipo==="arrebentou"){
+  if(a.tipo==="fugaIsca"){
+    // peixe nada levando a isca: a linha continua presa nele (você ainda não soltou)
+    if(a.pz){
+      a.fugaVX*=1.015; a.pz.x+=a.fugaVX;
+      a.pz.y+=a.fugaVY; a.fugaVY+=0.02;
+      a.pz.y=Math.min(a.pz.y, H-10);
+      const isc=isca(); isc.x=a.pz.x; isc.y=a.pz.y;   // isca na boca do peixe
+      pts[0].x=vara.x; pts[0].y=vara.y;               // linha reta vara->peixe
+    }
+    if(a.t>=a.dur){ estado="fim"; resultado(false,a.sp,0,'timing'); anim=null; }
+  } else if(a.tipo==="arrebentou"){
     if(a.pz){
       // foge acelerando pro fundo (leva a isca), nadando mais fundo conforme o tempo
       a.fugaVX*=1.012;                          // acelera horizontalmente
@@ -896,7 +926,7 @@ function draw(){
   drawBarcoFrente();
   // LINHA: quando há TENSÃO (água, briga, voo, vitória), é uma reta esticada da
   // ponta da vara até a isca/peixe — com uma curvatura mínima só pra não parecer rígida.
-  const linhaTensa = (estado==="agua"||estado==="mordendo"||estado==="briga"||estado==="voando"||(emAnim&&anim.tipo==="vitoria"));
+  const linhaTensa = (estado==="agua"||estado==="mordendo"||estado==="briga"||estado==="voando"||(emAnim&&(anim.tipo==="vitoria"||anim.tipo==="fugaIsca")));
   const escondeLinha = emAnim && anim.tipo==="vitoria" && anim.t>=anim.descida; // some quando o peixe já foi solto
   if(emAnim && anim.tipo==="arrebentou"){
     // ROMPEU: linha solta e mole (Verlet), cai natural
@@ -1584,17 +1614,20 @@ function placarFinal(){
   btn.textContent='JOGAR DE NOVO ▸';btn.onclick=function(){iniciar();btn.onclick=proximo;};
   // guarda um SNAPSHOT do resultado pra salvar com segurança (não depende de var global no clique)
   _snapPlacar={ pontos:pontos, peixes:capturas.length };
-  // ranking global: sempre mostra a caixa e a lista; o salvar aparece só se pontuou
+  // ranking global: salva automaticamente com o nome definido na tela inicial
   const box=el('rkBox');
   box.style.display='block';
+  el('rkSalvar').style.display='none';   // não pede nome aqui (já foi na abertura)
   if(pontos>=1){
-    el('rkSalvar').style.display='flex';
-    const bt=el('rkBtn'); bt.disabled=false; bt.textContent='Salvar';
-    _jaSalvou=false;
+    el('rkCta').style.display='block';
+    el('rkCta').textContent='Salvando '+nomeRanking+' no ranking…';
+    salvarRankingGlobal(nomeRanking, pontos, capturas.length)
+      .then(()=>{ el('rkCta').textContent='✓ '+nomeRanking+' entrou no ranking!'; renderRkGlobal(); })
+      .catch(()=>{ el('rkCta').textContent='Não deu pra salvar online (sem conexão).'; renderRkGlobal(); });
   } else {
-    el('rkSalvar').style.display='none';
+    el('rkCta').style.display='none';
+    renderRkGlobal();
   }
-  renderRkGlobal();
   mostrar('resultado');
 }
 let _jaSalvou=false, _snapPlacar={pontos:0,peixes:0};
@@ -1609,6 +1642,7 @@ async function salvarMeuRanking(){
     _jaSalvou=true;
     bt.textContent='Salvo ✓';
     el('rkSalvar').style.display='none';
+    el('rkCta').textContent='✓ '+nome+' entrou no ranking!';
     renderRkGlobal();
   }catch(e){
     bt.disabled=false; bt.textContent='Tentar de novo';
